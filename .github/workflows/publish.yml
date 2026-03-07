@@ -13,20 +13,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install hatchling cyclonedx-bom
+      - run: pip install hatchling
       - run: python -m hatchling build
-      - run: pip install dist/*.whl
-      - run: cyclonedx-py environment --of JSON -o sbom/sbom.cdx.json
-        env:
-          PYTHONPATH: src
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sbom
-          path: sbom/
 
   publish:
     needs: build
