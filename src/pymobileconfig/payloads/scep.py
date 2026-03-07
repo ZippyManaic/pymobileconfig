@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import Any, ClassVar, TypeAlias, cast
 
 from .base import BasePayload
 
@@ -14,21 +14,23 @@ from .base import BasePayload
 # Nested (mobileconfig native format):
 #   [[["CN", "device-001"]], [["OU", "backend"]], [["O", "Acme"]]]
 
-SubjectPairs = list[tuple[str, str]]
-SubjectNested = list[list[list[str]]]
+SubjectPairs: TypeAlias = list[tuple[str, str]]
+SubjectNested: TypeAlias = list[list[list[str]]]
 
 
 def _normalise_subject(subject: SubjectPairs | SubjectNested) -> SubjectNested:
     if not subject:
         return []
-    if isinstance(subject[0], (list, tuple)) and isinstance(subject[0][0], list):
-        return subject  # type: ignore[return-value]
-    return [[[k, v]] for k, v in subject]  # type: ignore[misc]
+    if isinstance(subject[0], tuple):
+        return [[[k, v]] for k, v in cast(SubjectPairs, subject)]
+    return cast(SubjectNested, subject)
 
 
 @dataclass
 class SCEP(BasePayload):
-    """SCEP certificate enrolment payload."""
+    """
+    SCEP certificate enrolment payload
+    """
 
     PAYLOAD_TYPE: ClassVar[str] = "com.apple.security.scep"
 
@@ -42,11 +44,11 @@ class SCEP(BasePayload):
     key_usage: int = 5
     retries: int = 3
     retry_delay: int = 10
-    keychain_access_groups: list[str] = field(default_factory=list)
+    keychain_access_groups: list[str] = field(default_factory=list[str])
 
-    def to_dict(self, profile_identifier: str) -> dict:
+    def to_dict(self, profile_identifier: str) -> dict[str, Any]:
         d = super().to_dict(profile_identifier)
-        content: dict = {
+        content: dict[str, Any] = {
             "URL": self.url,
             "Name": self.name,
             "Challenge": self.challenge,

@@ -108,23 +108,23 @@ class TestPKCS12:
     _P12_BYTES = b"\x30\x82\x00\x01\x02\x03\x04\x05"  # fake .p12 bytes
 
     def test_payload_type(self):
-        p = PKCS12(display_name="USB-C Server Cert", pkcs12=self._P12_BYTES)
+        p = PKCS12(display_name="DeviceServer Cert", pkcs12=self._P12_BYTES)
         assert p.to_dict("com.example")["PayloadType"] == "com.apple.security.pkcs12"
 
     def test_bytes_embedded_as_payload_content(self):
-        p = PKCS12(display_name="USB-C Server Cert", pkcs12=self._P12_BYTES)
+        p = PKCS12(display_name="Server Cert", pkcs12=self._P12_BYTES)
         d = p.to_dict("com.example")
         assert d["PayloadContent"] == self._P12_BYTES
 
     def test_path_loaded(self, tmp_path):
         p12_file = tmp_path / "server.p12"
         p12_file.write_bytes(self._P12_BYTES)
-        p = PKCS12(display_name="USB-C Server Cert", pkcs12=p12_file)
+        p = PKCS12(display_name="Server Cert", pkcs12=p12_file)
         assert p.to_dict("com.example")["PayloadContent"] == self._P12_BYTES
 
     def test_password_included_when_set(self):
         p = PKCS12(
-            display_name="USB-C Server Cert",
+            display_name="Server Cert",
             pkcs12=self._P12_BYTES,
             password="secret",
         )
@@ -132,7 +132,7 @@ class TestPKCS12:
         assert d["Password"] == "secret"
 
     def test_password_absent_when_empty(self):
-        p = PKCS12(display_name="USB-C Server Cert", pkcs12=self._P12_BYTES)
+        p = PKCS12(display_name="Server Cert", pkcs12=self._P12_BYTES)
         assert "Password" not in p.to_dict("com.example")
 
     def test_survives_plist_round_trip(self):
@@ -140,7 +140,7 @@ class TestPKCS12:
 
         profile = Profile(display_name="X", organisation="Acme")
         profile.add(PKCS12(
-            display_name="USB-C Server Cert",
+            display_name="Server Cert",
             pkcs12=self._P12_BYTES,
             password="secret",
         ))

@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import Any, ClassVar
 
 
 @dataclass
 class BasePayload:
-    """Base class for all mobileconfig payload types."""
+    """
+    Base class for all mobileconfig payload types
+    """
 
     PAYLOAD_TYPE: ClassVar[str]
 
@@ -20,7 +22,7 @@ class BasePayload:
         init=False,
     )
 
-    def to_dict(self, profile_identifier: str) -> dict:
+    def to_dict(self, profile_identifier: str) -> dict[str, Any]:
         return {
             "PayloadDisplayName": self.display_name,
             "PayloadIdentifier": f"{profile_identifier}.{self.PAYLOAD_TYPE}.{self._uuid}",

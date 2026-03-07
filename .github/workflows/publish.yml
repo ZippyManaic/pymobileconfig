@@ -16,11 +16,17 @@ jobs:
       - run: pip install hatchling cyclonedx-bom
       - run: python -m hatchling build
       - run: pip install dist/*.whl
-      - run: cyclonedx-py environment --of JSON -o dist/sbom.cdx.json
+      - run: cyclonedx-py environment --of JSON -o sbom/sbom.cdx.json
+        env:
+          PYTHONPATH: src
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom/
 
   publish:
     needs: build

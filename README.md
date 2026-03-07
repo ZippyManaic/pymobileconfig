@@ -70,7 +70,7 @@ SCEP certificate enrolment — used for Intune-managed device certificates.
 Installs a PKCS#12 certificate and private key bundle into the device keychain.
 
 Appropriate for delivering shared server certificates where the same key is
-intentionally distributed to multiple devices (e.g. a USB-C device server cert
+intentionally distributed to multiple devices (e.g. a device server cert
 shared across a fleet). For per-device identity certificates, use `SCEP` instead
 — the private key never leaves the device's Secure Enclave.
 
