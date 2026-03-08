@@ -10,7 +10,7 @@ from typing import Any
 from .payloads.base import BasePayload
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Profile:
     """
     An Apple mobileconfig configuration profile
@@ -21,12 +21,9 @@ class Profile:
     description: str = ""
     identifier: str = ""
     removal_disallowed: bool = False
+    scope: str = "System"  # System or User
+    uuid: str = field(default_factory=lambda: str(uuid.uuid4()).upper())
 
-    _uuid: str = field(
-        default_factory=lambda: str(uuid.uuid4()).upper(),
-        repr=False,
-        init=False,
-    )
     _payloads: list[BasePayload] = field(
         default_factory=list[BasePayload],
         repr=False,
@@ -36,7 +33,7 @@ class Profile:
     def __post_init__(self) -> None:
         if not self.identifier:
             slug = self.organisation.lower().replace(" ", "")
-            self.identifier = f"com.{slug}.profile.{self._uuid}"
+            self.identifier = f"com.{slug}.profile.{self.uuid}"
 
     def add(self, payload: BasePayload) -> Profile:
         """
@@ -55,8 +52,9 @@ class Profile:
             "PayloadIdentifier": self.identifier,
             "PayloadOrganization": self.organisation,
             "PayloadRemovalDisallowed": self.removal_disallowed,
+            "PayloadScope": self.scope,
             "PayloadType": "Configuration",
-            "PayloadUUID": self._uuid,
+            "PayloadUUID": self.uuid,
             "PayloadVersion": 1,
             "PayloadContent": [p.to_dict(self.identifier) for p in self._payloads],
         }

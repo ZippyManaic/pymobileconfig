@@ -19,9 +19,20 @@ class TestProfile:
         assert d["PayloadType"] == "Configuration"
         assert d["PayloadVersion"] == 1
         assert d["PayloadRemovalDisallowed"] is False
+        assert d["PayloadScope"] == "System"
         assert isinstance(d["PayloadUUID"], str)
         assert len(d["PayloadUUID"]) == 36
         assert d["PayloadContent"] == []
+
+    def test_custom_scope(self):
+        profile = Profile(display_name="X", organisation="Acme", scope="User")
+        assert profile.to_dict()["PayloadScope"] == "User"
+
+    def test_custom_uuid(self):
+        my_uuid = "MY-STABLE-UUID"
+        profile = Profile(display_name="X", organisation="Acme", uuid=my_uuid)
+        assert profile.uuid == my_uuid
+        assert profile.to_dict()["PayloadUUID"] == my_uuid
 
     def test_identifier_defaults_from_organisation(self):
         profile = Profile(display_name="X", organisation="My Corp")
@@ -86,7 +97,12 @@ class TestBasePayloadFields:
     def test_payload_uuid_is_unique(self):
         p1 = ManagedAppConfig(display_name="A", config={})
         p2 = ManagedAppConfig(display_name="B", config={})
-        assert p1._uuid != p2._uuid
+        assert p1.uuid != p2.uuid
+
+    def test_payload_custom_uuid(self):
+        p = ManagedAppConfig(display_name="A", config={}, uuid="MY-PAYLOAD-UUID")
+        assert p.uuid == "MY-PAYLOAD-UUID"
+        assert p.to_dict("com.example")["PayloadUUID"] == "MY-PAYLOAD-UUID"
 
     def test_payload_identifier_includes_profile_identifier(self):
         p = ManagedAppConfig(display_name="A", config={})

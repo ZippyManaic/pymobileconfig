@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from pymobileconfig.payloads import ManagedAppConfig, PKCS12, SCEP, TrustedCertificate
+from pymobileconfig.payloads.scep import _normalise_subject
 from pymobileconfig.payloads.trusted_cert import _pem_to_der
 
 
@@ -38,6 +39,14 @@ class TestTrustedCertificate:
     def test_payload_type(self):
         p = TrustedCertificate(display_name="Root CA", certificate=_RAW_BYTES)
         assert p.to_dict("com.example")["PayloadType"] == "com.apple.security.root"
+
+    def test_custom_payload_type(self):
+        p = TrustedCertificate(
+            display_name="Inter CA",
+            certificate=_RAW_BYTES,
+            payload_type="com.apple.security.pkcs1",
+        )
+        assert p.to_dict("com.example")["PayloadType"] == "com.apple.security.pkcs1"
 
     def test_pem_to_der_utility(self):
         assert _pem_to_der(_PEM) == _RAW_BYTES
@@ -73,6 +82,12 @@ class TestSCEP:
         content = p.to_dict("com.example")["PayloadContent"]
         assert content["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
 
+    def test_subject_normalised_from_flat_list_of_lists(self):
+        # Test the branch handling [["CN", "dev"], ["OU", "backend"]]
+        p = self._make(subject=[["CN", "dev"], ["OU", "backend"]])
+        content = p.to_dict("com.example")["PayloadContent"]
+        assert content["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
+
     def test_subject_nested_format_passed_through(self):
         nested = [[["CN", "dev"]], [["OU", "backend"]]]
         p = self._make(subject=nested)
@@ -88,6 +103,22 @@ class TestSCEP:
         assert content["Retries"] == 3
         assert content["RetryDelay"] == 10
         assert content["Name"] == "scep"
+        assert content["KeyIsExtractable"] is False
+
+    def test_key_is_extractable(self):
+        p = self._make(key_is_extractable=True)
+        assert p.to_dict("com.example")["PayloadContent"]["KeyIsExtractable"] is True
+
+    def test_subject_alt_name(self):
+        san = {"dnsName": "example.com"}
+        p = self._make(subject_alt_name=san)
+        assert p.to_dict("com.example")["PayloadContent"]["SubjectAltName"] == san
+
+    def test_ca_fingerprint(self):
+        p = self._make(ca_fingerprint=b"FINGERPRINT")
+        assert (
+            p.to_dict("com.example")["PayloadContent"]["CAFingerprint"] == b"FINGERPRINT"
+        )
 
     def test_keychain_access_groups_included_when_set(self):
         p = self._make(
@@ -195,3 +226,20 @@ class TestManagedAppConfig:
         parsed = plistlib.loads(profile.dumps())
         payload = parsed["PayloadContent"][0]
         assert payload["api_base_url"] == "https://api.example.com"
+
+
+def test_normalise_subject_utility():
+    # Branch 1: Empty
+    assert _normalise_subject([]) == []
+
+    # Branch 2: List of tuples
+    pairs = [("CN", "dev"), ("OU", "backend")]
+    expected = [[["CN", "dev"]], [["OU", "backend"]]]
+    assert _normalise_subject(pairs) == expected
+
+    # Branch 3: Flat list of lists
+    flat_lists = [["CN", "dev"], ["OU", "backend"]]
+    assert _normalise_subject(flat_lists) == expected
+
+    # Branch 4: Already nested (pass-through)
+    assert _normalise_subject(expected) == expected

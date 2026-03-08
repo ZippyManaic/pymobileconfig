@@ -21,12 +21,16 @@ SubjectNested: TypeAlias = list[list[list[str]]]
 def _normalise_subject(subject: SubjectPairs | SubjectNested) -> SubjectNested:
     if not subject:
         return []
+    # If it's a list of tuples, or a list of lists where the first item isn't a list
     if isinstance(subject[0], tuple):
         return [[[k, v]] for k, v in cast(SubjectPairs, subject)]
+    if isinstance(subject[0], list) and (not subject[0] or not isinstance(subject[0][0], list)):
+        # Handle cases where it might be a flat list of lists [[k, v], [k, v]]
+        return [[item] for item in cast(Any, subject)]
     return cast(SubjectNested, subject)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class SCEP(BasePayload):
     """
     SCEP certificate enrolment payload
@@ -44,6 +48,9 @@ class SCEP(BasePayload):
     key_usage: int = 5
     retries: int = 3
     retry_delay: int = 10
+    key_is_extractable: bool = False
+    subject_alt_name: dict[str, Any] = field(default_factory=dict[str, Any])
+    ca_fingerprint: bytes = b""
     keychain_access_groups: list[str] = field(default_factory=list[str])
 
     def to_dict(self, profile_identifier: str) -> dict[str, Any]:
@@ -58,7 +65,12 @@ class SCEP(BasePayload):
             "KeyUsage": self.key_usage,
             "Retries": self.retries,
             "RetryDelay": self.retry_delay,
+            "KeyIsExtractable": self.key_is_extractable,
         }
+        if self.subject_alt_name:
+            content["SubjectAltName"] = self.subject_alt_name
+        if self.ca_fingerprint:
+            content["CAFingerprint"] = self.ca_fingerprint
         if self.keychain_access_groups:
             content["KeychainAccessGroups"] = self.keychain_access_groups
         d["PayloadContent"] = content

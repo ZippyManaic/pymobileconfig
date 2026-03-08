@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 from .base import BasePayload
 
 
-@dataclass
+@dataclass(kw_only=True)
 class PKCS12(BasePayload):
     """
     PKCS#12 identity certificate payload

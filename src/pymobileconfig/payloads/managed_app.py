@@ -7,7 +7,7 @@ from typing import Any, ClassVar
 from .base import BasePayload
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ManagedAppConfig(BasePayload):
     """
     Managed app configuration payload
