@@ -1,8 +1,28 @@
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
 
+import hashlib
+import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, ClassVar, TypeAlias, cast
+
+
+def ca_fingerprint_from_cert(cert_path: str | Path) -> bytes:
+    """
+    Return the SHA-1 fingerprint of a PEM certificate as raw bytes.
+
+    This is the value iOS uses to verify the SCEP server's identity when
+    ``CAFingerprint`` is present in the SCEP payload.  It must match the
+    SHA-1 of the DER-encoded certificate returned by the SCEP
+    ``GetCACert`` operation (typically the intermediate CA).
+
+    Requires ``openssl`` on PATH.
+    """
+    der = subprocess.check_output(
+        ["openssl", "x509", "-in", str(cert_path), "-outform", "DER"]
+    )
+    return hashlib.sha1(der).digest()
 
 from .base import BasePayload
 
@@ -61,7 +81,7 @@ class SCEP(BasePayload):
             "Challenge": self.challenge,
             "Subject": _normalise_subject(self.subject),
             "KeyType": self.key_type,
-            "KeySize": self.key_size,
+            "Keysize": self.key_size,
             "KeyUsage": self.key_usage,
             "Retries": self.retries,
             "RetryDelay": self.retry_delay,

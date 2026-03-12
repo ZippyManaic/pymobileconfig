@@ -98,7 +98,7 @@ class TestSCEP:
         p = self._make()
         content = p.to_dict("com.example")["PayloadContent"]
         assert content["KeyType"] == "RSA"
-        assert content["KeySize"] == 2048
+        assert content["Keysize"] == 2048
         assert content["KeyUsage"] == 5
         assert content["Retries"] == 3
         assert content["RetryDelay"] == 10

@@ -23,8 +23,11 @@ class ManagedAppConfig(BasePayload):
     PAYLOAD_TYPE: ClassVar[str] = "com.apple.configuration.managed"
 
     config: dict[str, Any]
+    bundle_id: str = ""
 
     def to_dict(self, profile_identifier: str) -> dict[str, Any]:
         d = super().to_dict(profile_identifier)
+        if self.bundle_id:
+            d["BundleID"] = self.bundle_id
         d.update(self.config)
         return d
