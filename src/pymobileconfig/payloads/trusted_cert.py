@@ -56,5 +56,5 @@ class TrustedCertificate(BasePayload):
         d = super().to_dict(profile_identifier)
         # Override the PayloadType if provided in the constructor
         d["PayloadType"] = self.payload_type
-        d["PayloadCertificateData"] = _load_certificate(self.certificate)
+        d["PayloadContent"] = _load_certificate(self.certificate)
         return d

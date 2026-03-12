@@ -22,19 +22,19 @@ class TestTrustedCertificate:
     def test_der_bytes_passed_through(self):
         p = TrustedCertificate(display_name="Root CA", certificate=_RAW_BYTES)
         d = p.to_dict("com.example")
-        assert d["PayloadCertificateData"] == _RAW_BYTES
+        assert d["PayloadContent"] == _RAW_BYTES
 
     def test_pem_bytes_converted_to_der(self):
         p = TrustedCertificate(display_name="Root CA", certificate=_PEM)
         d = p.to_dict("com.example")
-        assert d["PayloadCertificateData"] == _RAW_BYTES
+        assert d["PayloadContent"] == _RAW_BYTES
 
     def test_pem_path_loaded_and_converted(self, tmp_path):
         pem_file = tmp_path / "ca.crt"
         pem_file.write_bytes(_PEM)
         p = TrustedCertificate(display_name="Root CA", certificate=pem_file)
         d = p.to_dict("com.example")
-        assert d["PayloadCertificateData"] == _RAW_BYTES
+        assert d["PayloadContent"] == _RAW_BYTES
 
     def test_payload_type(self):
         p = TrustedCertificate(display_name="Root CA", certificate=_RAW_BYTES)
@@ -69,70 +69,60 @@ class TestSCEP:
 
     def test_url_in_content(self):
         p = self._make(url="https://ca.example.com:9000/scep/scep")
-        content = p.to_dict("com.example")
-        assert content["URL"] == "https://ca.example.com:9000/scep/scep"
+        assert p.to_dict("com.example")["PayloadContent"]["URL"] == "https://ca.example.com:9000/scep/scep"
 
     def test_challenge_in_content(self):
         p = self._make(challenge="mysecret")
-        content = p.to_dict("com.example")
-        assert content["Challenge"] == "mysecret"
+        assert p.to_dict("com.example")["PayloadContent"]["Challenge"] == "mysecret"
 
     def test_subject_normalised_from_pairs(self):
         p = self._make(subject=[("CN", "dev"), ("OU", "backend")])
-        content = p.to_dict("com.example")
-        assert content["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
+        assert p.to_dict("com.example")["PayloadContent"]["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
 
     def test_subject_normalised_from_flat_list_of_lists(self):
-        # Test the branch handling [["CN", "dev"], ["OU", "backend"]]
         p = self._make(subject=[["CN", "dev"], ["OU", "backend"]])
-        content = p.to_dict("com.example")
-        assert content["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
+        assert p.to_dict("com.example")["PayloadContent"]["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
 
     def test_subject_nested_format_passed_through(self):
         nested = [[["CN", "dev"]], [["OU", "backend"]]]
         p = self._make(subject=nested)
-        content = p.to_dict("com.example")
-        assert content["Subject"] == nested
+        assert p.to_dict("com.example")["PayloadContent"]["Subject"] == nested
 
     def test_defaults(self):
         p = self._make()
-        content = p.to_dict("com.example")
-        assert content["KeyType"] == "RSA"
-        assert content["Keysize"] == 2048
-        assert content["KeyUsage"] == 5
-        assert content["Retries"] == 3
-        assert content["RetryDelay"] == 10
-        assert content["Name"] == "scep"
-        assert content["KeyIsExtractable"] is False
+        c = p.to_dict("com.example")["PayloadContent"]
+        assert c["KeyType"] == "RSA"
+        assert c["Keysize"] == 2048
+        assert c["KeyUsage"] == 5
+        assert c["Retries"] == 3
+        assert c["RetryDelay"] == 10
+        assert c["Name"] == "scep"
+        assert c["KeyIsExtractable"] is False
 
     def test_key_is_extractable(self):
         p = self._make(key_is_extractable=True)
-        assert p.to_dict("com.example")["KeyIsExtractable"] is True
+        assert p.to_dict("com.example")["PayloadContent"]["KeyIsExtractable"] is True
 
     def test_subject_alt_name(self):
         san = {"dnsName": "example.com"}
         p = self._make(subject_alt_name=san)
-        assert p.to_dict("com.example")["SubjectAltName"] == san
+        assert p.to_dict("com.example")["PayloadContent"]["SubjectAltName"] == san
 
     def test_ca_fingerprint(self):
         p = self._make(ca_fingerprint=b"FINGERPRINT")
-        assert (
-            p.to_dict("com.example")["CAFingerprint"] == b"FINGERPRINT"
-        )
+        assert p.to_dict("com.example")["PayloadContent"]["CAFingerprint"] == b"FINGERPRINT"
 
     def test_keychain_access_groups_included_when_set(self):
         p = self._make(
             keychain_access_groups=["$(AppIdentifierPrefix)com.example.app"]
         )
-        content = p.to_dict("com.example")
-        assert content["KeychainAccessGroups"] == [
+        assert p.to_dict("com.example")["PayloadContent"]["KeychainAccessGroups"] == [
             "$(AppIdentifierPrefix)com.example.app"
         ]
 
     def test_keychain_access_groups_absent_when_empty(self):
         p = self._make()
-        content = p.to_dict("com.example")
-        assert "KeychainAccessGroups" not in content
+        assert "KeychainAccessGroups" not in p.to_dict("com.example")["PayloadContent"]
 
 
 class TestPKCS12:
@@ -232,14 +222,10 @@ def test_normalise_subject_utility():
     # Branch 1: Empty
     assert _normalise_subject([]) == []
 
-    # Branch 2: List of tuples
+    # Branch 2: List of tuples → triple-nested
     pairs = [("CN", "dev"), ("OU", "backend")]
     expected = [[["CN", "dev"]], [["OU", "backend"]]]
     assert _normalise_subject(pairs) == expected
 
-    # Branch 3: Flat list of lists
-    flat_lists = [["CN", "dev"], ["OU", "backend"]]
-    assert _normalise_subject(flat_lists) == expected
-
-    # Branch 4: Already nested (pass-through)
+    # Branch 3: Already nested (pass-through)
     assert _normalise_subject(expected) == expected

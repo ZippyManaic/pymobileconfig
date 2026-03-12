@@ -26,28 +26,34 @@ def ca_fingerprint_from_cert(cert_path: str | Path) -> bytes:
 
 from .base import BasePayload
 
-# Subject may be supplied as simple pairs or the nested mobileconfig format.
+# Subject may be supplied as simple pairs or the Apple mobileconfig native format.
 #
-# Simple (recommended):
+# Apple's SCEP profile spec requires triple nesting — each RDN is wrapped in its
+# own array so that multi-valued RDNs are representable:
+#   [ [["CN","device-001"]], [["OU","backend"]], [["O","Acme"]] ]
+#
+# Callers may pass the simpler pair formats; _normalise_subject converts them:
+#
+# Tuple pairs (recommended input):
 #   [("CN", "device-001"), ("OU", "backend"), ("O", "Acme")]
 #
-# Nested (mobileconfig native format):
-#   [[["CN", "device-001"]], [["OU", "backend"]], [["O", "Acme"]]]
+# List pairs:
+#   [["CN", "device-001"], ["OU", "backend"], ["O", "Acme"]]
 
 SubjectPairs: TypeAlias = list[tuple[str, str]]
+SubjectFlat: TypeAlias = list[list[str]]
 SubjectNested: TypeAlias = list[list[list[str]]]
 
 
-def _normalise_subject(subject: SubjectPairs | SubjectNested) -> SubjectNested:
+def _normalise_subject(subject: SubjectPairs | SubjectFlat | SubjectNested) -> SubjectNested:
     if not subject:
         return []
-    # If it's a list of tuples, or a list of lists where the first item isn't a list
-    if isinstance(subject[0], tuple):
-        return [[[k, v]] for k, v in cast(SubjectPairs, subject)]
-    if isinstance(subject[0], list) and (not subject[0] or not isinstance(subject[0][0], list)):
-        # Handle cases where it might be a flat list of lists [[k, v], [k, v]]
-        return [[item] for item in cast(Any, subject)]
-    return cast(SubjectNested, subject)
+    first = subject[0]
+    # Already in nested format: [[["CN", "val"]], ...]
+    if isinstance(first, list) and first and isinstance(first[0], list):
+        return cast(SubjectNested, subject)
+    # Tuple pairs or list pairs: [("CN","val"), ...] or [["CN","val"], ...]
+    return [[[str(k), str(v)]] for k, v in subject]  # type: ignore[misc]
 
 
 @dataclass(kw_only=True)
@@ -60,12 +66,11 @@ class SCEP(BasePayload):
 
     url: str
     challenge: str
-    subject: SubjectPairs | SubjectNested
+    subject: SubjectPairs | SubjectFlat
     name: str = "scep"
     key_type: str = "RSA"
     key_size: int = 2048
-    # 5 = Digital Signature (1) + Key Encipherment (4)
-    key_usage: int = 5
+    key_usage: int = 5  # 5 = Digital Signature (1) + Key Encipherment (4); 0 = omit
     retries: int = 3
     retry_delay: int = 10
     key_is_extractable: bool = False
@@ -82,16 +87,17 @@ class SCEP(BasePayload):
             "Subject": _normalise_subject(self.subject),
             "KeyType": self.key_type,
             "Keysize": self.key_size,
-            "KeyUsage": self.key_usage,
             "Retries": self.retries,
             "RetryDelay": self.retry_delay,
             "KeyIsExtractable": self.key_is_extractable,
         }
+        if self.key_usage:
+            content["KeyUsage"] = self.key_usage
         if self.subject_alt_name:
             content["SubjectAltName"] = self.subject_alt_name
         if self.ca_fingerprint:
             content["CAFingerprint"] = self.ca_fingerprint
         if self.keychain_access_groups:
             content["KeychainAccessGroups"] = self.keychain_access_groups
-        d.update(content)
+        d["PayloadContent"] = content
         return d

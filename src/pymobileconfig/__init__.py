@@ -3,7 +3,7 @@ from .payloads import ManagedAppConfig, PKCS12, SCEP, TrustedCertificate
 from .payloads.scep import ca_fingerprint_from_cert
 from .profile import Profile
 
-__version__ = "0.3.1"
+__version__ = "0.3.3"
 
 __all__ = [
     "ManagedAppConfig",
