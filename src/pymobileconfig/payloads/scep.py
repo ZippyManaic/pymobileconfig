@@ -93,5 +93,5 @@ class SCEP(BasePayload):
             content["CAFingerprint"] = self.ca_fingerprint
         if self.keychain_access_groups:
             content["KeychainAccessGroups"] = self.keychain_access_groups
-        d["PayloadContent"] = content
+        d.update(content)
         return d
