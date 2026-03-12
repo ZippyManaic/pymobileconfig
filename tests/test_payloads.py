@@ -69,34 +69,34 @@ class TestSCEP:
 
     def test_url_in_content(self):
         p = self._make(url="https://ca.example.com:9000/scep/scep")
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["URL"] == "https://ca.example.com:9000/scep/scep"
 
     def test_challenge_in_content(self):
         p = self._make(challenge="mysecret")
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["Challenge"] == "mysecret"
 
     def test_subject_normalised_from_pairs(self):
         p = self._make(subject=[("CN", "dev"), ("OU", "backend")])
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
 
     def test_subject_normalised_from_flat_list_of_lists(self):
         # Test the branch handling [["CN", "dev"], ["OU", "backend"]]
         p = self._make(subject=[["CN", "dev"], ["OU", "backend"]])
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["Subject"] == [[["CN", "dev"]], [["OU", "backend"]]]
 
     def test_subject_nested_format_passed_through(self):
         nested = [[["CN", "dev"]], [["OU", "backend"]]]
         p = self._make(subject=nested)
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["Subject"] == nested
 
     def test_defaults(self):
         p = self._make()
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["KeyType"] == "RSA"
         assert content["Keysize"] == 2048
         assert content["KeyUsage"] == 5
@@ -107,31 +107,31 @@ class TestSCEP:
 
     def test_key_is_extractable(self):
         p = self._make(key_is_extractable=True)
-        assert p.to_dict("com.example")["PayloadContent"]["KeyIsExtractable"] is True
+        assert p.to_dict("com.example")["KeyIsExtractable"] is True
 
     def test_subject_alt_name(self):
         san = {"dnsName": "example.com"}
         p = self._make(subject_alt_name=san)
-        assert p.to_dict("com.example")["PayloadContent"]["SubjectAltName"] == san
+        assert p.to_dict("com.example")["SubjectAltName"] == san
 
     def test_ca_fingerprint(self):
         p = self._make(ca_fingerprint=b"FINGERPRINT")
         assert (
-            p.to_dict("com.example")["PayloadContent"]["CAFingerprint"] == b"FINGERPRINT"
+            p.to_dict("com.example")["CAFingerprint"] == b"FINGERPRINT"
         )
 
     def test_keychain_access_groups_included_when_set(self):
         p = self._make(
             keychain_access_groups=["$(AppIdentifierPrefix)com.example.app"]
         )
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert content["KeychainAccessGroups"] == [
             "$(AppIdentifierPrefix)com.example.app"
         ]
 
     def test_keychain_access_groups_absent_when_empty(self):
         p = self._make()
-        content = p.to_dict("com.example")["PayloadContent"]
+        content = p.to_dict("com.example")
         assert "KeychainAccessGroups" not in content
 
 
